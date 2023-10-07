@@ -1,37 +1,61 @@
-const{response,request} = require('express')
+const{response,request} = require('express');
+const bcryptjs = require('bcryptjs');
 
-const usuarioGet =(req = request,res=response) =>{
+const Usuario = require('../models/usuario');
+const usuario = require('../models/usuario');
 
-    const {q,nombre = 'no nombre',apikey,page = "1",limit} = req.query;
 
+
+const usuarioGet = async(req = request,res=response) =>{
+    // const {q,nombre = 'no nombre',apikey,page = "1",limit} = req.query;
+    const {limite=5, desde = 0 } = req.query;
+    const query = {estado:true};
+
+    const [total,usuarios] = await promise.all([
+        Usuario.countDocuments(query),
+        Usuario.find(query)
+        .skip(Number( desde ))
+        .limit(Number( limite ))
+    ]);
     res.json({
-        msg:'get API - controlador',
-        q,
-        nombre,
-        apikey,
-        page
+       total,
+       usuarios
     });
 }
  
-const usuarioPost =(req,res=response) =>{
+const usuarioPost = async(req,res=response) =>{
+    
 
-    const {nombre,edad} = req.body;
+    const {nombre,correo,password,rol} = req.body;
+    const usuario = new Usuario({nombre,correo,password,rol});
+
+    //verificar si el correo exist
+    
+    //Encriptar el password
+    const salt = bcryptjs.genSaltSync();
+    usuario.password = bcryptjs.hashSync(password,salt)
+    //guardar db
+    await usuario.save();
 
     res.json({
-        
-        msg:'Post API - controlador',
-        nombre,
-        edad
+        usuario
     });
 }
 
-const usuarioPut =(req,res=response) =>{
+const usuarioPut = async(req,res=response) =>{
     const id = req.params.id;
+    const {_id,password,google,correo,...resto } = req.body;
 
+    //TODO validar contra base de datos
+    if(password){
+        const salt = bcryptjs.genSaltSync();
+       resto.password = bcryptjs.hashSync(password,salt)
+    }
+    const usuario = await Usuario.findByIdAndUpdate( id,resto );
     res.json({
         
         msg:'Put API - controlador',
-        id
+        usuario
     });
 }
 
@@ -46,10 +70,16 @@ const usuarioPatch =(req,res=response) =>{
     });
 }
 
-const usuarioDelete =(req,res=response) =>{
+const usuarioDelete = async(req,res=response) =>{
+
+    const {id} = req.params;
+    //bisicamente lo borramos
+    // const usuario = await Usuario.findByIdAndDelete(id);
+
+    const usuario = await Usuario.findByIdAndUpdate(id,{estado:false})
+
     res.json({
-        
-        msg:'Delete API - controlador'
+        usuario
     });
 }
 module.exports = {
